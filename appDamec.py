@@ -4,7 +4,7 @@ import plotly.express as px
 from io import BytesIO
 
 # Configuración de la página web
-st.set_page_config(page_title="Portal DAMEC - Gestión de Órdenes (Cloud)", layout="wide")
+st.set_page_config(page_title="Portal DAMEC - Control de Acceso", layout="wide")
 
 # --- ESTILOS CSS Y COLORES CORPORATIVOS ---
 st.markdown("""
@@ -27,19 +27,70 @@ st.markdown("""
 # --- CARGA DE DATOS DESDE GOOGLE SHEETS EN LA NUBE ---
 @st.cache_data(ttl=60)
 def cargar_datos():
-    # ID oficial de tu Google Sheet
     sheet_id = "1ltNCZkGh1LNNDepLPmaZG0eY9RJ3gIaLmfyQzy3WTHs"
-    
-    # URL directa de exportación a CSV
     url_csv = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-    
     df = pd.read_csv(url_csv)
-    df = df.dropna(how='all') # Elimina filas completamente vacías
+    df = df.dropna(how='all')
     return df
 
 df_global = cargar_datos()
 
-# --- ENCABEZADO Y LOGOTIPO ---
+# Obtener lista de responsables limpios del Excel
+lista_responsables = sorted(df_global["Responsable"].dropna().unique().tolist())
+
+# --- DICIOnario DE CREDENCIALES ESTABLECIDAS ---
+credenciales = {
+    "Administrador (Global)": "Admin2026*",
+    "AC": "Damec1*",
+    "LM": "Damec9*",
+    "GN": "Damec5*",
+    "DEC": "Damec11*",
+    "DSC": "Damec12*",
+    "LV": "Damec7*",
+    "JCM": "Damec10*",
+    "JSV": "Damec2*"
+}
+
+# --- GESTIÓN DE SESIÓN ---
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+if "usuario_actual" not in st.session_state:
+    st.session_state.usuario_actual = ""
+
+# --- PANTALLA DE LOGIN (SI NO HA INICIADO SESIÓN) ---
+if not st.session_state.autenticado:
+    col_l1, col_l2, col_l3 = st.columns([1, 1.2, 1])
+    with col_l2:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        try:
+            st.image('Logo DAMEC.png', width=220)
+        except:
+            st.markdown("<h1>DAMEC SAS</h1>", unsafe_allow_html=True)
+        
+        st.subheader("🔐 Inicio de Sesión - Portal HSEQ")
+        st.markdown("Ingrese sus credenciales corporativas para acceder a las órdenes.")
+        
+        with st.form("form_login"):
+            perfiles_disponibles = ["Administrador (Global)"] + lista_responsables
+            usuario_ingreso = st.selectbox("Seleccione su Usuario / Perfil", perfiles_disponibles)
+            password_ingreso = st.text_input("Contraseña", type="password")
+            
+            btn_login = st.form_submit_button("Ingresar al Portal", use_container_width=True)
+            
+            if btn_login:
+                # Validar la contraseña correspondiente
+                if usuario_ingreso in credenciales and credenciales[usuario_ingreso] == password_ingreso:
+                    st.session_state.autenticado = True
+                    st.session_state.usuario_actual = usuario_ingreso
+                    st.rerun()
+                else:
+                    st.error("Contraseña incorrecta. Por favor verifique sus datos.")
+    st.stop()
+
+# --- APLICACIÓN PRINCIPAL (UNA VEZ AUTENTICADO) ---
+usuario_actual = st.session_state.usuario_actual
+
+# Encabezado y Logotipo
 col_head1, col_head2 = st.columns([4, 1])
 with col_head1:
     st.title("📊 Portal de Gestión de Órdenes - DAMEC SAS (Cloud)")
@@ -51,12 +102,12 @@ with col_head2:
 
 st.markdown("---")
 
-# --- BARRA LATERAL: CONTROL DE ACCESO Y FILTRADO ---
-st.sidebar.header("🔑 Control de Acceso")
-
-lista_responsables = sorted(df_global["Responsable"].dropna().unique().tolist())
-perfiles_disponibles = ["Administrador (Global)"] + lista_responsables
-usuario_actual = st.sidebar.selectbox("Seleccione su Usuario / Perfil", perfiles_disponibles)
+# --- BARRA LATERAL: CONTROL DE SESIÓN Y FILTRADO ---
+st.sidebar.header(f"👤 Usuario: {usuario_actual}")
+if st.sidebar.button("🚪 Cerrar Sesión"):
+    st.session_state.autenticado = False
+    st.session_state.usuario_actual = ""
+    st.rerun()
 
 st.sidebar.markdown("---")
 st.sidebar.header("🔍 Filtros Avanzados")
@@ -86,7 +137,7 @@ if empresa_seleccionada != "Todas":
 if estado_seleccionado != "Todas":
     df_usuario = df_usuario[df_usuario["Estado de vencimiento"] == estado_seleccionado]
 
-# Botón para sincronizar datos desde Google Sheets al instante
+# Botón para sincronizar datos
 if st.sidebar.button("🔄 Sincronizar con Google Sheets"):
     st.cache_data.clear()
     st.rerun()
