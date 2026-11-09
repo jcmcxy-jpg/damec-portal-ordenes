@@ -49,6 +49,7 @@ credenciales = {
     "LV": "Damec7*",
     "JCM": "Damec10*",
     "JSV": "Damec2*"
+    "DCV": "Damec6*",
 }
 
 # --- GESTIÓN DE SESIÓN ---
