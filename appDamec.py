@@ -48,7 +48,7 @@ credenciales = {
     "DSC": "Damec12*",
     "LV": "Damec7*",
     "JCM": "Damec10*",
-    "JSV": "Damec2*"
+    "JSV": "Damec2*",
     "DCV": "Damec6*"
 }
 
